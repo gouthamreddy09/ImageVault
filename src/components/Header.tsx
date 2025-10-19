@@ -22,7 +22,7 @@ export default function Header({ onOpenTrash, onOpenAlbums, onOpenHidden, showFa
                 <ImageIcon className="w-6 h-6 text-white" />
               </div>
               <h1 className="text-3xl font-bold tracking-tight text-indigo-900">
-                ImageVault
+                PicHaven
               </h1>
             </div>
 
