@@ -20,6 +20,9 @@ export default function HiddenFolder({ sessionToken, isOpen, onClose, onImageUnh
   const [loadingImages, setLoadingImages] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -29,6 +32,8 @@ export default function HiddenFolder({ sessionToken, isOpen, onClose, onImageUnh
       setPassword('');
       setConfirmPassword('');
       setError('');
+      setShowResetPassword(false);
+      setResetSuccess(false);
     }
   }, [isOpen]);
 
@@ -139,6 +144,50 @@ export default function HiddenFolder({ sessionToken, isOpen, onClose, onImageUnh
       setError('Failed to verify password. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (password.length < 4) {
+      setError('Password must be at least 4 characters');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setResetLoading(true);
+    setError('');
+
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-hidden-password`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'reset', password }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reset password');
+      }
+
+      setResetSuccess(true);
+      setTimeout(() => {
+        setShowResetPassword(false);
+        setResetSuccess(false);
+        setPassword('');
+        setConfirmPassword('');
+      }, 2000);
+    } catch (error) {
+      console.error('Reset password error:', error);
+      setError('Failed to reset password. Please try again.');
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -266,6 +315,90 @@ export default function HiddenFolder({ sessionToken, isOpen, onClose, onImageUnh
                     </button>
                   </div>
                 </div>
+              ) : showResetPassword ? (
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <div className="inline-flex p-4 bg-orange-100 rounded-full mb-4">
+                      <Lock className="w-12 h-12 text-orange-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">Reset Password</h3>
+                    <p className="text-gray-600">Create a new password for your hidden folder</p>
+                  </div>
+
+                  {error && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                      {error}
+                    </div>
+                  )}
+
+                  {resetSuccess && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                      Password reset successfully!
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        New Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Enter new password"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+                          disabled={resetLoading}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Confirm New Password
+                      </label>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm new password"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+                        disabled={resetLoading}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleResetPassword();
+                          }
+                        }}
+                      />
+                    </div>
+                    <button
+                      onClick={handleResetPassword}
+                      disabled={resetLoading || !password || !confirmPassword}
+                      className="w-full px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    >
+                      {resetLoading ? 'Resetting...' : 'Reset Password'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowResetPassword(false);
+                        setPassword('');
+                        setConfirmPassword('');
+                        setError('');
+                      }}
+                      className="w-full text-sm text-orange-600 hover:text-orange-700 font-medium"
+                    >
+                      Back to login
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-6">
                   <div className="text-center">
@@ -317,6 +450,17 @@ export default function HiddenFolder({ sessionToken, isOpen, onClose, onImageUnh
                       className="w-full px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                     >
                       {loading ? 'Verifying...' : 'Unlock'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowResetPassword(true);
+                        setPassword('');
+                        setError('');
+                      }}
+                      className="w-full text-sm text-orange-600 hover:text-orange-700 font-medium"
+                    >
+                      Forgot password?
                     </button>
                   </div>
                 </div>

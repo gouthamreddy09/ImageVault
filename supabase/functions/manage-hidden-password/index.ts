@@ -160,6 +160,46 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (action === "reset") {
+      if (!password || password.length < 4) {
+        return new Response(
+          JSON.stringify({ error: "Password must be at least 4 characters" }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      const hashedPassword = await hashPassword(password);
+
+      const { error: updateError } = await supabase
+        .from("user_settings")
+        .update({
+          hidden_folder_password: hashedPassword,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", user.id);
+
+      if (updateError) {
+        return new Response(
+          JSON.stringify({ error: "Failed to reset password", details: updateError.message }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ message: "Password reset successfully" }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: "Invalid action" }),
       {
