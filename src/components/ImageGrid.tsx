@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Image as ImageIcon, Edit2, Check, X, Trash2, CheckSquare, Square, Heart, FolderPlus, EyeOff, ZoomIn } from 'lucide-react';
+import { Image as ImageIcon, Edit2, Check, X, Trash2, CheckSquare, Square, Heart, FolderPlus, EyeOff, ZoomIn, Plus } from 'lucide-react';
 
 interface ImageData {
   id: string;
@@ -34,6 +34,10 @@ export default function ImageGrid({ images, loading, onImageRenamed, onImageDele
   const [bulkHiding, setBulkHiding] = useState(false);
   const [bulkFavoriting, setBulkFavoriting] = useState(false);
   const [viewingImage, setViewingImage] = useState<ImageData | null>(null);
+  const [showCreateAlbum, setShowCreateAlbum] = useState(false);
+  const [newAlbumName, setNewAlbumName] = useState('');
+  const [newAlbumDescription, setNewAlbumDescription] = useState('');
+  const [creatingAlbum, setCreatingAlbum] = useState(false);
 
   const handleStartRename = (image: ImageData) => {
     setEditingId(image.id);
@@ -358,6 +362,52 @@ export default function ImageGrid({ images, loading, onImageRenamed, onImageDele
       alert('Failed to add images to album. Please try again.');
     } finally {
       setAddingToAlbum(false);
+    }
+  };
+
+  const handleCreateAlbum = async () => {
+    if (!newAlbumName.trim()) {
+      alert('Please enter an album name');
+      return;
+    }
+
+    setCreatingAlbum(true);
+
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-album`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newAlbumName.trim(),
+          description: newAlbumDescription.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Create album failed');
+      }
+
+      const data = await response.json();
+      setShowCreateAlbum(false);
+      setNewAlbumName('');
+      setNewAlbumDescription('');
+
+      // Add the new album to albums and select it
+      await fetchAlbums();
+
+      // Automatically add images to the newly created album
+      if (data.albumId) {
+        await handleAddToAlbum(data.albumId);
+      }
+    } catch (error) {
+      console.error('Create album error:', error);
+      alert('Failed to create album. Please try again.');
+    } finally {
+      setCreatingAlbum(false);
     }
   };
 
@@ -686,6 +736,15 @@ export default function ImageGrid({ images, loading, onImageRenamed, onImageDele
               <div className="text-center py-8">
                 <p className="text-gray-500 mb-4">No albums available</p>
                 <button
+                  onClick={() => {
+                    setShowAddToAlbum(false);
+                    setShowCreateAlbum(true);
+                  }}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors mb-2"
+                >
+                  Create Album
+                </button>
+                <button
                   onClick={() => setShowAddToAlbum(false)}
                   className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
                 >
@@ -695,6 +754,16 @@ export default function ImageGrid({ images, loading, onImageRenamed, onImageDele
             ) : (
               <>
                 <div className="space-y-2 max-h-96 overflow-y-auto mb-4">
+                  <button
+                    onClick={() => {
+                      setShowAddToAlbum(false);
+                      setShowCreateAlbum(true);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors mb-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span className="font-medium">Create New Album</span>
+                  </button>
                   {albums.map((album) => (
                     <button
                       key={album.id}
@@ -721,6 +790,64 @@ export default function ImageGrid({ images, loading, onImageRenamed, onImageDele
                 </button>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {showCreateAlbum && (
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Create New Album</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Album Name
+                </label>
+                <input
+                  type="text"
+                  value={newAlbumName}
+                  onChange={(e) => setNewAlbumName(e.target.value)}
+                  placeholder="Enter album name"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                  disabled={creatingAlbum}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description (optional)
+                </label>
+                <textarea
+                  value={newAlbumDescription}
+                  onChange={(e) => setNewAlbumDescription(e.target.value)}
+                  placeholder="Enter album description"
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none"
+                  disabled={creatingAlbum}
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCreateAlbum}
+                  disabled={creatingAlbum || !newAlbumName.trim()}
+                  className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 font-medium"
+                >
+                  {creatingAlbum ? 'Creating...' : 'Create & Add Photos'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCreateAlbum(false);
+                    setNewAlbumName('');
+                    setNewAlbumDescription('');
+                    setShowAddToAlbum(true);
+                  }}
+                  disabled={creatingAlbum}
+                  className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
