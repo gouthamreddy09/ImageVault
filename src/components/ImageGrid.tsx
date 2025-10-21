@@ -39,7 +39,10 @@ export default function ImageGrid({ images, loading, onImageRenamed, onImageDele
   const [newAlbumDescription, setNewAlbumDescription] = useState('');
   const [creatingAlbum, setCreatingAlbum] = useState(false);
 
-  const handleStartRename = (image: ImageData) => {
+  const handleStartRename = (image: ImageData, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
     setEditingId(image.id);
     setNewName(image.filename);
   };
@@ -523,9 +526,13 @@ export default function ImageGrid({ images, loading, onImageRenamed, onImageDele
       {images.map((image) => (
         <div
           key={image.id}
-          onClick={() => handleImageClick(image.id)}
+          onClick={() => {
+            if (editingId !== image.id) {
+              handleImageClick(image.id);
+            }
+          }}
           className={`group relative aspect-square overflow-hidden rounded-xl bg-gray-100 shadow-sm hover:shadow-md transition-all duration-300 ${
-            isSelectionMode ? 'cursor-pointer' : ''
+            isSelectionMode || editingId === image.id ? 'cursor-pointer' : ''
           } ${
             selectedImages.has(image.id) ? 'ring-4 ring-indigo-600' : ''
           }`}
@@ -566,7 +573,7 @@ export default function ImageGrid({ images, loading, onImageRenamed, onImageDele
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleStartRename(image);
+                      handleStartRename(image, e);
                     }}
                     className="p-2 bg-white/90 hover:bg-white rounded-lg backdrop-blur-sm transition-colors"
                     title="Rename image"
@@ -606,6 +613,7 @@ export default function ImageGrid({ images, loading, onImageRenamed, onImageDele
                     type="text"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
                     placeholder="New filename"
                     className="w-full px-3 py-2 text-sm bg-white/95 backdrop-blur-sm rounded-lg outline-none"
                     disabled={renaming}
@@ -619,7 +627,10 @@ export default function ImageGrid({ images, loading, onImageRenamed, onImageDele
                   />
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handleRename(image.id, image.filename)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRename(image.id, image.filename);
+                      }}
                       disabled={renaming || !newName.trim()}
                       className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
                     >
@@ -627,7 +638,10 @@ export default function ImageGrid({ images, loading, onImageRenamed, onImageDele
                       {renaming ? 'Saving...' : 'Save'}
                     </button>
                     <button
-                      onClick={handleCancelRename}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCancelRename();
+                      }}
                       disabled={renaming}
                       className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
                     >
