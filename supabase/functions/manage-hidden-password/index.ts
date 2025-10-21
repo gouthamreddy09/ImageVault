@@ -61,7 +61,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { action, password } = await req.json();
+    const body = await req.json();
+    const { action, password } = body;
 
     if (action === "check") {
       const { data: settings } = await supabase
@@ -161,9 +162,11 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "reset") {
-      if (!password || password.length < 4) {
+      const { currentPassword, newPassword } = body;
+
+      if (!currentPassword) {
         return new Response(
-          JSON.stringify({ error: "Password must be at least 4 characters" }),
+          JSON.stringify({ error: "Current password is required" }),
           {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -171,12 +174,51 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const hashedPassword = await hashPassword(password);
+      if (!newPassword || newPassword.length < 4) {
+        return new Response(
+          JSON.stringify({ error: "New password must be at least 4 characters" }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // Verify current password first
+      const { data: settings } = await supabase
+        .from("user_settings")
+        .select("hidden_folder_password")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!settings?.hidden_folder_password) {
+        return new Response(
+          JSON.stringify({ error: "No password set" }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      const hashedCurrentPassword = await hashPassword(currentPassword);
+      if (hashedCurrentPassword !== settings.hidden_folder_password) {
+        return new Response(
+          JSON.stringify({ error: "Current password is incorrect" }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // Update to new password
+      const hashedNewPassword = await hashPassword(newPassword);
 
       const { error: updateError } = await supabase
         .from("user_settings")
         .update({
-          hidden_folder_password: hashedPassword,
+          hidden_folder_password: hashedNewPassword,
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", user.id);
