@@ -1,4 +1,4 @@
-# PicHeaven
+# PicHaven
 
 
 A full-stack image upload and search application similar to Google Photos, built with React, Supabase Edge Functions, and AWS S3.
