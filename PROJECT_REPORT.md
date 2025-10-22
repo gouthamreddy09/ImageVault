@@ -7,7 +7,7 @@
 
 **Project Name:** PicHaven
 **Type:** Full-Stack Web Application
-**Duration:** October 2024
+**Duration:** October 2025
 **Status:** Production-Ready & Deployed
 **Live URL:** [Deployed on Netlify]
 
@@ -1810,7 +1810,7 @@ S3_BUCKET_NAME=[bucket-name]
 ---
 
 **Report Prepared By:** [Your Name]
-**Date:** October 2024
+**Date:** October 2025
 **Version:** 1.0
 **Status:** Final
 
